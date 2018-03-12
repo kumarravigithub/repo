@@ -1,13 +1,12 @@
-# DeepLab-v3-plus Semantic Segmentation in TensorFlow
+# DeepLab-v3 Semantic Segmentation in TensorFlow
 
-This repo attempts to reproduce [Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation (DeepLabv3+)](https://arxiv.org/abs/1802.02611) in 
+This repo attempts to reproduce [DeepLabv3](https://arxiv.org/abs/1706.05587) in 
 TensorFlow for semantic image segmentation on the
  [PASCAL VOC dataset](http://host.robots.ox.ac.uk/pascal/VOC/).
  The implementation is largely based on
- [my DeepLabv3 implementation](https://github.com/rishizek/tensorflow-deeplab-v3),
- which was originally based on
- [DrSleep's DeepLab v2 implemantation](https://github.com/DrSleep/tensorflow-deeplab-resnet)
- and [tensorflow models Resnet implementation](https://github.com/tensorflow/models/tree/master/official/resnet).
+ [DrSleep's DeepLab v2 implemantation](https://github.com/DrSleep/tensorflow-deeplab-resnet) 
+ and 
+ [tensorflow models Resnet implementation](https://github.com/tensorflow/models/tree/master/official/resnet).
  
 
 ## Setup
@@ -19,16 +18,37 @@ Please install latest version of TensorFlow (r1.6) and use Python 3.
 [augmented segmentation data](https://www.dropbox.com/s/oeu149j8qtbs1x0/SegmentationClassAug.zip?dl=0) 
 (Thanks to DrSleep), specifying the location with `--data_dir` and `--label_data_dir`
 (namely, `$data_dir/$label_data_dir`).  
-- For inference the trained model with `77.31%` mIoU on the Pascal VOC 2012 validation dataset
+- For inference the trained model with `76.42%` mIoU on the Pascal VOC 2012 validation dataset
  is available 
-[here](https://www.dropbox.com/s/1xrd4c5atyrkb6z/deeplabv3plus_ver1.tar.gz?dl=0). Download and extract to 
+[here](https://www.dropbox.com/s/gzwb0d6ydpfoxoa/deeplabv3_ver1.tar.gz?dl=0). Download and extract to 
 `--model_dir`.
 - For training, you need to download and extract 
 [pre-trained Resnet v2 101 model](http://download.tensorflow.org/models/resnet_v2_101_2017_04_14.tar.gz)
 from [slim](https://github.com/tensorflow/models/tree/master/research/slim)
 specifying the location with `--pre_trained_model`.
 
-## Training
+## Training on Nails Dataset
+If you are training on `Nails` dataset from scratch:
+
+1. Make sure you have downloaded the pre-trained resnet model and nails dataset. 
+Place resent model under `models` directory & your nails dataset's train and 
+label images under `data/raw/images`, `data/raw/masks` directories, respectively.
+
+2. Convert labels in augmented labels format. 
+The following command will create train/val split 
+`dataset` folder, it will also convert given label images to augmented label 
+images inside `data/raw/masks_aug` folder
+
+```bash
+python -m prepare_datasets
+```
+
+3. Follow the instructions below for training on `PASCAL VOC` dataset
+
+During training, your model checkpoints would be saved under `models/DeepLabV3` 
+directory.
+
+## Training 
 For training model, you first need to convert original data to
 the TensorFlow TFRecord format. This enables to accelerate training seep. 
 ```bash
@@ -42,7 +62,7 @@ you can start training model as follow:
 python train.py --model_dir MODEL_DIR --pre_trained_model PRE_TRAINED_MODEL
 ```
 Here, `--pre_trained_model` contains the pre-trained Resnet model, whereas 
-`--model_dir` contains the trained DeepLabv3+ checkpoints. 
+`--model_dir` contains the trained DeepLabv3 checkpoints. 
 If `--model_dir` contains the valid checkpoints, the model is trained from the 
 specified checkpoint in `--model_dir`.
 
@@ -70,34 +90,33 @@ To evaluate how model perform, one can use the following command:
 ```bash
 python evaluate.py --help
 ```
-The current best model build by this implementation achieves `77.31%` mIoU on the Pascal VOC 2012 
+The current best model build by this implementation achieves `76.42%` mIoU on the Pascal VOC 2012 
 validation dataset. 
 
-| Network Backbone | train OS | eval OS | SC  | mIOU paper  | mIOU repo  |
-|:----------------:|:--------:|:-------:|:---:|:-----------:|:----------:|
-| Resnet101        | 16       | 16      |     | 78.85%      | **77.31%** | 
+|       |Method                                | OS  | mIOU       |
+|:-----:|:------------------------------------:|:---:|:----------:|
+| paper | MG(1,2,4)+ASPP(6,12,18)+Image Pooling|16   | 77.21%     | 
+| repo  | MG(1,2,4)+ASPP(6,12,18)+Image Pooling|16   | **76.42%** |
 
 Here, the above model was trained about 9.5 hours (with Tesla V100 and r1.6) with following parameters:
 ```bash
-python train.py --train_epochs 43 --batch_size 15 --weight_decay 2e-4 --model_dir models/ba=15,wd=2e-4,max_iter=30k --max_iter 30000
+python train.py --train_epochs 46 --batch_size 16 --weight_decay 1e-4 --model_dir models/ba=16,wd=1e-4,max_iter=30k --max_iter 30000
 ```
+You may achieve better performance with the cost of computation with my 
+[DeepLabV3+ Implementation](https://github.com/rishizek/tensorflow-deeplab-v3-plus).
 
 ## Inference
 To apply semantic segmentation to your images, one can use the following commands:
 ```bash
 python inference.py --data_dir DATA_DIR --infer_data_list INFER_DATA_LIST --model_dir MODEL_DIR 
 ```
-The trained model is available [here](https://www.dropbox.com/s/1xrd4c5atyrkb6z/deeplabv3plus_ver1.tar.gz?dl=0).
+The trained model is available [here](https://www.dropbox.com/s/gzwb0d6ydpfoxoa/deeplabv3_ver1.tar.gz?dl=0).
 One can find the detailed explanation of mask such as meaning of color in 
 [DrSleep's repo](https://github.com/DrSleep/tensorflow-deeplab-resnet).
 
 ## TODO:
 Pull requests are welcome.
-- [x] Implement Decoder
-- [x] Resnet as Network Backbone
-- [ ] Xception as Network Backbone
-- [ ] Implement depthwise separable convolutions
-- [ ] Make network more GPU memory efficient (i.e. support larger batch size)
+- [x] Freeze batch normalization during training
 - [ ] Multi-GPU support
 - [ ] Channels first support (Apparently large performance boost on GPU)
 - [ ] Model pretrained on MS-COCO
